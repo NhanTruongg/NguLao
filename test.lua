@@ -1,4 +1,4 @@
-getgenv().Key = "ERTNgbSoGhGUchHnUWgFrkimaYrvMEhh"
+getgenv().Key = "EkwIhkngnUGffainjZhTTJOjaPUVUAyV"
 getgenv().ImportMacro = "https://raw.nousigi.com/macro/1188097087750021143_09948d0a11df3a4ff6b01c24a8dab5a2.json?macroname=winter140_3"
 getgenv().Config = {
 	["Auto Join Equipper"] = {
