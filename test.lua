@@ -517,7 +517,7 @@ autoEventToggle = Tabs.AutoJoin:AddToggle("AutoEventStage", { Title = "Auto Even
 -- ===================================================================
 Tabs.Bounty:AddParagraph({ Title = "Auto Bounty", Content = "Tự động làm bounty. Chỉ nhận 1 nhiệm vụ mỗi lần. Ưu tiên độ khó cao nhất." })
 
-local bountyInfoLabel = Tabs.Bounty:AddParagraph({ Title = "Trạng thái:", Content = "Đang chờ..." })
+local bountyInfoLabel = Tabs.Bounty:AddLabel("Trạng thái: Đang chờ...")
 
 local bountyToggle = Tabs.Bounty:AddToggle("BountyToggle", { Title = "Kích hoạt Auto Bounty", Description = "Tự động làm bounty, claim khi xong, chuyển nhiệm vụ mới", Default = false })
 
@@ -605,7 +605,7 @@ local function doBountyLoop()
     local world = target.world or "Marine Lobby"
     saveCurrentFarmedMat("BOUNTY_" .. world)
 
-    bountyInfoLabel:SetContent("Đang farm: " .. target.enemy .. "\n" .. world .. " A10 Hard\nTiến độ: " .. (target.progress or 0) .. "/" .. target.required)
+    bountyInfoLabel:SetText("Đang farm: " .. target.enemy .. " | " .. world .. " A10 Hard | " .. (target.progress or 0) .. "/" .. target.required)
 
     if inHub and create_room then
         local ok = pcall(function() return create_room:InvokeServer({ boosted = true, act = 10, difficulty = "Hard", mode = "Story", only_friends = false, world = world }) end)
