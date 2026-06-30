@@ -521,24 +521,27 @@ local bountyInfoLabel = Tabs.Bounty:AddParagraph({ Title = "Trạng thái:", Con
 
 local bountyToggle = Tabs.Bounty:AddToggle("BountyToggle", { Title = "Kích hoạt Auto Bounty", Description = "Tự động làm bounty, claim khi xong, chuyển nhiệm vụ mới", Default = false })
 
+local function countBounties(b)
+    local n = 0
+    for _ in pairs(b or {}) do n = n + 1 end
+    return n
+end
+
 local function selectHardestBounty(bounties)
-    -- Only 1 bounty active at a time.
-    -- If no active bounty, pick the inactive one with highest difficulty.
     local hardest = nil
     local hardestScore = -1
 
-    for idx, b in ipairs(bounties) do
+    for idx, b in pairs(bounties) do
         if type(b) ~= "table" then continue end
         if b.active then
-            -- Already an active bounty, must finish it first
-            currentBountyIndex = idx
+            currentBountyIndex = tonumber(idx)
             return b
         end
         local score = DIFFICULTY_ORDER[b.difficulty] or 0
         if score > hardestScore then
             hardestScore = score
             hardest = b
-            hardest.idx = idx
+            hardest.idx = tonumber(idx)
         end
     end
 
@@ -553,16 +556,16 @@ local function doBountyLoop()
     if not bountyEnabled then return end
 
     local bounties, tickets = getBountyData()
-    if not bounties or #bounties == 0 then
+    if not bounties or countBounties(bounties) == 0 then
         Fluent:Notify({ Title = "Bounty", Content = "Không có bounty!", Duration = 4 })
         if bountyToggle then bountyToggle:SetValue(false) end
         return
     end
 
     -- 1. Claim completed active bounty (progress >= required)
-    for idx, b in ipairs(bounties) do
+    for idx, b in pairs(bounties) do
         if type(b) == "table" and b.active and b.progress >= b.required then
-            local ok = claimBounty(idx)
+            local ok = claimBounty(tonumber(idx))
             if ok then
                 Fluent:Notify({ Title = "Bounty", Content = "Claim thành công: " .. b.enemy, Duration = 4 })
                 bounties, tickets = getBountyData()
