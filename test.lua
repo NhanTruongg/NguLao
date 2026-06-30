@@ -517,7 +517,7 @@ autoEventToggle = Tabs.AutoJoin:AddToggle("AutoEventStage", { Title = "Auto Even
 -- ===================================================================
 Tabs.Bounty:AddParagraph({ Title = "Auto Bounty", Content = "Tự động làm bounty. Chỉ nhận 1 nhiệm vụ mỗi lần. Ưu tiên độ khó cao nhất." })
 
-local bountyInfoLabel = Tabs.Bounty:AddLabel("Trạng thái: Đang chờ...")
+-- bounty status shown via print/warn instead of Fluent label (avoids SetText/SetContent compat issues)
 
 local bountyToggle = Tabs.Bounty:AddToggle("BountyToggle", { Title = "Kích hoạt Auto Bounty", Description = "Tự động làm bounty, claim khi xong, chuyển nhiệm vụ mới", Default = false })
 
@@ -555,65 +555,94 @@ end
 local function doBountyLoop()
     if not bountyEnabled then return end
 
+    print("===== AUTO BOUNTY =====")
+    print("[Bounty] Đang lấy dữ liệu bounty từ server...")
+
     local bounties, tickets = getBountyData()
     if not bounties or countBounties(bounties) == 0 then
+        print("[Bounty] Không tìm thấy bounty nào!")
         Fluent:Notify({ Title = "Bounty", Content = "Không có bounty!", Duration = 4 })
         if bountyToggle then bountyToggle:SetValue(false) end
         return
     end
 
+    print("[Bounty] Tìm thấy " .. countBounties(bounties) .. " bounty, Tickets: " .. (tickets or 0))
+
     -- 1. Claim completed active bounty (progress >= required)
     for idx, b in pairs(bounties) do
         if type(b) == "table" and b.active and b.progress >= b.required then
+            print("[Bounty] >> Phát hiện bounty hoàn thành: " .. b.enemy .. " (" .. b.progress .. "/" .. b.required .. ")")
+            print("[Bounty] >> Đang claim bounty #" .. tostring(idx) .. "...")
             local ok = claimBounty(tonumber(idx))
             if ok then
+                print("[Bounty] >> Claim thành công: " .. b.enemy .. "!")
                 Fluent:Notify({ Title = "Bounty", Content = "Claim thành công: " .. b.enemy, Duration = 4 })
                 bounties, tickets = getBountyData()
                 break
+            else
+                print("[Bounty] >> Claim thất bại!")
             end
         end
     end
 
     -- 2. Select the best bounty to work on (hardest first)
+    print("[Bounty] Đang chọn bounty khó nhất có thể làm...")
     local target = selectHardestBounty(bounties)
     if not target then
+        print("[Bounty] Không còn bounty nào để làm!")
         Fluent:Notify({ Title = "Bounty", Content = "Hết bounty để làm!", Duration = 4 })
         if bountyToggle then bountyToggle:SetValue(false) end
         return
     end
 
+    print("[Bounty] Chọn: " .. target.enemy .. " | Độ khó: " .. target.difficulty .. " | World: " .. (target.world or "?") .. " | Yêu cầu: " .. target.required .. " | Hiện tại: " .. (target.progress or 0))
+
     -- 3. If not active, accept it
     if not target.active then
+        print("[Bounty] Bounty chưa được accept. Đang accept...")
         local ok = acceptBounty(currentBountyIndex)
         if not ok then
-            -- Try use ticket then accept
+            print("[Bounty] Accept thất bại, thử dùng ticket...")
             local ticketOk = pcall(function() return bountyUseTicket:InvokeServer() end)
             if ticketOk then
+                print("[Bounty] Dùng ticket thành công, thử accept lại...")
                 ok = acceptBounty(currentBountyIndex)
+            else
+                print("[Bounty] Không có ticket hoặc không thể dùng ticket!")
             end
         end
         if not ok then
+            print("[Bounty] Không thể accept bounty!")
             Fluent:Notify({ Title = "Bounty", Content = "Không thể accept bounty!", Duration = 4 })
             if bountyToggle then bountyToggle:SetValue(false) end
             return
         end
+        print("[Bounty] Accept thành công: " .. target.enemy)
         Fluent:Notify({ Title = "Bounty", Content = "Đã accept: " .. target.enemy .. " (" .. target.difficulty .. ")", Duration = 4 })
         target.active = true
+    else
+        print("[Bounty] Bounty đã được accept từ trước, tiếp tục farm...")
     end
 
     -- 4. Farm: join target world, Act 10 Hard
     local world = target.world or "Marine Lobby"
     saveCurrentFarmedMat("BOUNTY_" .. world)
 
-    bountyInfoLabel:SetText("Đang farm: " .. target.enemy .. " | " .. world .. " A10 Hard | " .. (target.progress or 0) .. "/" .. target.required)
+    print("[Bounty] Chuẩn bị farm: " .. target.enemy .. " ở " .. world .. " Act 10 Hard")
+    print("[Bounty] Tiến độ hiện tại: " .. (target.progress or 0) .. "/" .. target.required)
 
     if inHub and create_room then
+        print("[Bounty] Đang tạo phòng: " .. world .. " A10 Hard (Story)...")
         local ok = pcall(function() return create_room:InvokeServer({ boosted = true, act = 10, difficulty = "Hard", mode = "Story", only_friends = false, world = world }) end)
         if not ok then
+            print("[Bounty] Tạo phòng thất bại ở " .. world)
             Fluent:Notify({ Title = "Bounty", Content = "Không vào được " .. world .. ", thử lại!", Duration = 4 })
+        else
+            print("[Bounty] Tạo phòng thành công! Đang bắt đầu trận...")
         end
         task.wait(1.5)
         pcall(function() start_remote:InvokeServer() end)
+        print("[Bounty] Đã vào trận, chờ kết thúc để cập nhật tiến trình...")
     end
 
     while bountyEnabled do task.wait(5) end
@@ -775,7 +804,7 @@ if gameEnding then
 
         -- Priority: Bounty
         if bountyEnabled then
-            print("Bounty: Kết thúc màn, out ra Hub xử lý tiếp.")
+            print("[Bounty] Kết thúc màn! Out ra Hub để cập nhật tiến trình và kiểm tra bounty...")
             if gameTeleport then pcall(function() gameTeleport:FireServer() end) end
             return
         end
